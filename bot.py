@@ -4,33 +4,47 @@ import os
 token = os.getenv('BOT_TOKEN')
 chat_id = os.getenv('CHAT_ID')
 
-# منبع جایگزین که سرعت بسیار بالایی دارد
-source_url = "https://raw.githubusercontent.com/skfhw/mtproxy/main/proxies.txt"
+# لیست منابع مختلف (اگه یکی ۴۰۴ داد، بره سراغ بعدی)
+sources = [
+    "https://api.proxyscrape.com/v2/?request=displayproxies&protocol=socks5&timeout=10000&country=all",
+    "https://raw.githubusercontent.com/hookzof/socks5_list/master/tg.txt",
+    "https://raw.githubusercontent.com/jetkai/proxy-list/main/online-proxies/txt/proxies-socks5.txt"
+]
 
 def send_proxies():
-    print("Connecting to Fast Source...")
-    try:
-        # تنظیم تایم‌اوت روی 10 ثانیه که زرد نماند
-        response = requests.get(source_url, timeout=10)
-        
-        if response.status_code == 200:
-            lines = response.text.split('\n')
-            # فیلتر کردن لینک‌های معتبر
-            proxies = [l.strip() for l in lines if 't.me/proxy?proxy=' in l]
-            
-            print(f"Found {len(proxies)} proxies. Sending...")
-            
-            count = 0
-            for proxy_link in proxies[:3]:
-                text = f"🚀 **پروکسی جدید سی‌تو**\n\n🔗 {proxy_link}\n\n🆔 {chat_id}"
-                url = f"https://api.telegram.org/bot{token}/sendMessage"
-                res = requests.post(url, data={'chat_id': chat_id, 'text': text})
-                print(f"Sent {count+1}: {res.status_code}")
-                count += 1
-        else:
-            print(f"Failed with status: {response.status_code}")
-    except Exception as e:
-        print(f"Error: {e}")
+    print("Searching for proxies in multiple sources...")
+    found_proxies = []
+    
+    for url in sources:
+        try:
+            print(f"Testing source: {url}")
+            res = requests.get(url, timeout=15)
+            if res.status_code == 200:
+                lines = res.text.split('\n')
+                # استخراج لینک‌های پروکسی تلگرام
+                valid = [l.strip() for l in lines if 't.me/proxy?proxy=' in l or (len(l) > 20 and ':' in l)]
+                if valid:
+                    found_proxies.extend(valid)
+                    print(f"Found {len(valid)} proxies here!")
+                    break # اگه پیدا کرد دیگه بقیه رو نچرخه
+        except:
+            continue
+
+    if found_proxies:
+        count = 0
+        for p in found_proxies[:3]:
+            # اگه لینک تلگرامی نبود، به فرمت تلگرام تبدیلش کن
+            link = p if 't.me' in p else f"https://t.me/proxy?proxy={p}"
+            text = f"🚀 **پروکسی جدید سی‌تو**\n\n🔗 {link}\n\n🆔 {chat_id}"
+            url = f"https://api.telegram.org/bot{token}/sendMessage"
+            requests.post(url, data={'chat_id': chat_id, 'text': text})
+            count += 1
+        print(f"Successfully sent {count} proxies to {chat_id}")
+    else:
+        print("All sources failed or returned 404. Let's send a test message instead.")
+        # برای اینکه بفهمی ربات سالمه، این پیام رو می‌فرسته:
+        requests.post(f"https://api.telegram.org/bot{token}/sendMessage", 
+                      data={'chat_id': chat_id, 'text': "🤖 ربات فعال است اما منبع پروکسی پیدا نشد."})
 
 if __name__ == "__main__":
     send_proxies()
