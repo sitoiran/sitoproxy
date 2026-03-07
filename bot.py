@@ -6,38 +6,36 @@ chat_id = os.getenv('CHAT_ID')
 
 def send_proxies():
     print("Process Started...")
-    # این منبع یک API است که همیشه پروکسی‌های تازه تولید می‌کند
-    url = "https://mtpro.xyz/api/?type=mtproto"
+    # منبع جایگزین که فیلتر نیست و به گیت‌هاب پاسخ می‌دهد
+    url = "https://raw.githubusercontent.com/hookzof/socks5_list/master/tg.txt"
     
     try:
-        print(f"Connecting to API...")
+        print("Fetching proxies from a stable global source...")
         response = requests.get(url, timeout=20)
         
         if response.status_code == 200:
-            data = response.json() # خروجی این سایت JSON است
-            print("Data received successfully!")
+            # جدا کردن خطوط و پیدا کردن لینک‌های سالم
+            proxies = [l.strip() for l in response.text.split('\n') if 't.me/proxy?proxy=' in l]
             
-            if len(data) > 0:
-                # گرفتن اولین پروکسی از لیست
-                p = data[0]
-                server = p.get('server')
-                port = p.get('port')
-                secret = p.get('secret')
+            if proxies:
+                # ارسال فقط ۱ عدد پروکسی (طبق درخواستت)
+                proxy = proxies[0]
+                text = f"🌍 **پروکسی بین‌المللی سی‌تو (ضد فیلتر)**\n\n🔗 {proxy}\n\n🆔 {chat_id}"
                 
-                # ساخت لینک استاندارد
-                proxy_link = f"https://t.me/proxy?server={server}&port={port}&secret={secret}"
-                
-                msg = f"🚀 **پروکسی جدید و اختصاصی سی‌تو**\n\n🔗 {proxy_link}\n\n🆔 {chat_id}"
                 api_url = f"https://api.telegram.org/bot{token}/sendMessage"
-                res = requests.post(api_url, data={'chat_id': chat_id, 'text': msg, 'parse_mode': 'Markdown'})
-                print(f"Telegram Response: {res.status_code}")
+                res = requests.post(api_url, data={'chat_id': chat_id, 'text': text})
+                
+                if res.status_code == 200:
+                    print("✅ پیام با موفقیت به تلگرام ارسال شد!")
+                else:
+                    print(f"❌ Telegram Error: {res.text}")
             else:
-                print("API returned empty list.")
+                print("No valid proxies found in source.")
         else:
-            print(f"API Error: {response.status_code}")
+            print(f"❌ Source Error: {response.status_code}")
             
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"⚠️ Critical Error: {e}")
 
 if __name__ == "__main__":
     send_proxies()
