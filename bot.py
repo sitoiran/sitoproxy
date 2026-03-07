@@ -4,28 +4,33 @@ import os
 token = os.getenv('BOT_TOKEN')
 chat_id = os.getenv('CHAT_ID')
 
-# منبع فوق‌العاده معتبر با لینک‌های مستقیم MTProto
-source_url = "https://raw.githubusercontent.com/yebekhe/TelegramV2rayCollector/main/sub/MTProto"
-
 def send_proxies():
+    print("Process Started...")
+    # منبع جایگزین و بسیار پایدار
+    url = "https://raw.githubusercontent.com/yebekhe/TelegramV2rayCollector/main/sub/MTProto"
+    
     try:
-        response = requests.get(source_url, timeout=20)
+        print(f"Connecting to: {url}")
+        response = requests.get(url, timeout=20)
+        
         if response.status_code == 200:
             lines = response.text.split('\n')
-            # پیدا کردن لینک‌هایی که با t.me/proxy شروع می‌شن
             proxies = [l.strip() for l in lines if 't.me/proxy?proxy=' in l]
             
             if proxies:
-                # طبق خواسته شما: ارسال ۱ عدد پروکسی در هر نوبت
-                proxy_link = proxies[0]
-                text = f"🚀 **پروکسی جدید و پرسرعت سی‌تو**\n\n🔗 {proxy_link}\n\n🆔 {chat_id}"
-                url = f"https://api.telegram.org/bot{token}/sendMessage"
-                requests.post(url, data={'chat_id': chat_id, 'text': text, 'parse_mode': 'Markdown'})
-                print("One direct proxy sent successfully!")
+                proxy = proxies[0]
+                msg = f"🚀 **پروکسی جدید سی‌تو**\n\n🔗 {proxy}"
+                api_url = f"https://api.telegram.org/bot{token}/sendMessage"
+                res = requests.post(api_url, data={'chat_id': chat_id, 'text': msg, 'parse_mode': 'Markdown'})
+                print(f"Telegram Response: {res.status_code}")
             else:
-                print("No direct link found.")
+                print("No proxy found in file.")
+        else:
+            print(f"Source Error: {response.status_code}")
+            
     except Exception as e:
         print(f"Error: {e}")
 
+# این دو خط پایین خیلی مهم هستن، حتما باشن:
 if __name__ == "__main__":
     send_proxies()
