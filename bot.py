@@ -6,36 +6,44 @@ chat_id = os.getenv('CHAT_ID')
 
 def send_proxies():
     print("Process Started...")
-    # منبع جایگزین که فیلتر نیست و به گیت‌هاب پاسخ می‌دهد
-    url = "https://raw.githubusercontent.com/hookzof/socks5_list/master/tg.txt"
+    # استفاده از یک منبع جایگزین که فایل متنی نیست (API مستقیم)
+    # این آدرس معمولاً توسط گیت‌هاب مسدود نمی‌شود
+    url = "https://proxylist.geonode.com/api/proxy-list?limit=10&page=1&sort_by=lastChecked&sort_type=desc&protocols=socks5"
     
     try:
-        print("Fetching proxies from a stable global source...")
+        print("Fetching fresh SOCKS5/MTProto data...")
         response = requests.get(url, timeout=20)
         
         if response.status_code == 200:
-            # جدا کردن خطوط و پیدا کردن لینک‌های سالم
-            proxies = [l.strip() for l in response.text.split('\n') if 't.me/proxy?proxy=' in l]
+            data = response.json()
+            proxies = data.get('data', [])
             
             if proxies:
-                # ارسال فقط ۱ عدد پروکسی (طبق درخواستت)
-                proxy = proxies[0]
-                text = f"🌍 **پروکسی بین‌المللی سی‌تو (ضد فیلتر)**\n\n🔗 {proxy}\n\n🆔 {chat_id}"
+                # گرفتن مشخصات اولین سرور (مثلاً آلمان یا آمریکا)
+                p = proxies[0]
+                ip = p['ip']
+                port = p['port']
+                
+                # تبدیل به فرمت پروکسی تلگرام (MTProto پیشنهادی)
+                # اگر سرور مخصوص داری جایگزین کن، در غیر این صورت پیام تست می‌فرستیم
+                proxy_link = f"tg://socks?server={ip}&port={port}"
+                
+                text = f"🌍 **پروکسی بین‌المللی سی‌تو (سرور خارج)**\n\n🔗 {proxy_link}\n\n🆔 {chat_id}"
                 
                 api_url = f"https://api.telegram.org/bot{token}/sendMessage"
                 res = requests.post(api_url, data={'chat_id': chat_id, 'text': text})
                 
-                if res.status_code == 200:
-                    print("✅ پیام با موفقیت به تلگرام ارسال شد!")
-                else:
-                    print(f"❌ Telegram Error: {res.text}")
+                print(f"Telegram API Status: {res.status_code}")
             else:
-                print("No valid proxies found in source.")
+                print("No proxies found in API response.")
         else:
-            print(f"❌ Source Error: {response.status_code}")
-            
+            print(f"Source Error: {response.status_code} - Switching to Emergency Message")
+            # اگر باز هم منبع قطع بود، حداقل بفهمیم ربات کار می‌کند:
+            requests.post(f"https://api.telegram.org/bot{token}/sendMessage", 
+                          data={'chat_id': chat_id, 'text': "🤖 ربات آنلاین است اما منابع پروکسی مسدود هستند. در حال بررسی منبع جدید..."})
+
     except Exception as e:
-        print(f"⚠️ Critical Error: {e}")
+        print(f"Error: {e}")
 
 if __name__ == "__main__":
     send_proxies()
