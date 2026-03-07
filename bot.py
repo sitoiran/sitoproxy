@@ -6,31 +6,38 @@ chat_id = os.getenv('CHAT_ID')
 
 def send_proxies():
     print("Process Started...")
-    # منبع جایگزین و بسیار پایدار
-    url = "https://raw.githubusercontent.com/yebekhe/TelegramV2rayCollector/main/sub/MTProto"
+    # این منبع یک API است که همیشه پروکسی‌های تازه تولید می‌کند
+    url = "https://mtpro.xyz/api/?type=mtproto"
     
     try:
-        print(f"Connecting to: {url}")
+        print(f"Connecting to API...")
         response = requests.get(url, timeout=20)
         
         if response.status_code == 200:
-            lines = response.text.split('\n')
-            proxies = [l.strip() for l in lines if 't.me/proxy?proxy=' in l]
+            data = response.json() # خروجی این سایت JSON است
+            print("Data received successfully!")
             
-            if proxies:
-                proxy = proxies[0]
-                msg = f"🚀 **پروکسی جدید سی‌تو**\n\n🔗 {proxy}"
+            if len(data) > 0:
+                # گرفتن اولین پروکسی از لیست
+                p = data[0]
+                server = p.get('server')
+                port = p.get('port')
+                secret = p.get('secret')
+                
+                # ساخت لینک استاندارد
+                proxy_link = f"https://t.me/proxy?server={server}&port={port}&secret={secret}"
+                
+                msg = f"🚀 **پروکسی جدید و اختصاصی سی‌تو**\n\n🔗 {proxy_link}\n\n🆔 {chat_id}"
                 api_url = f"https://api.telegram.org/bot{token}/sendMessage"
                 res = requests.post(api_url, data={'chat_id': chat_id, 'text': msg, 'parse_mode': 'Markdown'})
                 print(f"Telegram Response: {res.status_code}")
             else:
-                print("No proxy found in file.")
+                print("API returned empty list.")
         else:
-            print(f"Source Error: {response.status_code}")
+            print(f"API Error: {response.status_code}")
             
     except Exception as e:
         print(f"Error: {e}")
 
-# این دو خط پایین خیلی مهم هستن، حتما باشن:
 if __name__ == "__main__":
     send_proxies()
