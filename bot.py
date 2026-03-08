@@ -35,10 +35,11 @@ def send_proxies():
         # ساخت لینک استاندارد SOCKS5 تلگرام
         proxy_link = f"tg://socks?server={ip}&port={port}"
         
+        # اصلاح متن: حذف علامت کپی و تبدیل به لینک آبی و کلیک‌خور
         text = (
             f"🌍 **پروکسی بین‌المللی سی‌تو (ویژه عبور از فیلترینگ)**\n\n"
-            f"🔗 `{proxy_link}`\n\n"
-            f"☝️ **روی لینک بالا بزنید تا متصل شوید**\n\n"
+            f"🔗 [برای اتصال به پروکسی اینجا کلیک کنید]({proxy_link})\n\n"
+            f"☝️ **روی لینک آبی بالا بزنید و Connect را انتخاب کنید.**\n\n"
             f"❤️🤍💚\n"
             f"🆔 {chat_id}\n"
             f"««««««««««««««««««««««\n\n"
@@ -52,7 +53,8 @@ def send_proxies():
         payload = {
             'chat_id': chat_id,
             'text': text,
-            'parse_mode': 'Markdown'
+            'parse_mode': 'Markdown',
+            'disable_web_page_preview': True # برای اینکه پیش‌نمایش سایت باز نشود و ظاهر پیام تمیز بماند
         }
         
         res = requests.post(api_url, data=payload)
