@@ -3,43 +3,66 @@ import os
 import re
 import json
 import random
+import socket
 from datetime import datetime, timedelta
 
 token = os.getenv('BOT_TOKEN')
 chat_id = os.getenv('CHAT_ID')
 
+def check_proxy_ping(ip, port):
+    """تست واقعی پینگ برای اطمینان از سالم بودن پروکسی قبل از ارسال"""
+    try:
+        start_time = datetime.now()
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(3) # حداکثر ۳ ثانیه برای پاسخ
+        result = sock.connect_ex((ip, int(port)))
+        end_time = datetime.now()
+        sock.close()
+        if result == 0:
+            return (end_time - start_time).total_seconds() * 1000
+        return None
+    except:
+        return None
+
 def get_best_proxies():
-    # استفاده از منابعی که پروکسی‌ها را بر اساس سرعت و تازگی مرتب می‌کنند
+    # استفاده از منابعی که پروکسی‌های مشابه iRoProxy را منتشر می‌کنند
     sources = [
+        "https://raw.githubusercontent.com/vfarid/proxy-list/main/socks5.txt",
         "https://raw.githubusercontent.com/Iranian-Hacker/Telegram-Proxies/master/proxies.txt",
-        "https://raw.githubusercontent.com/mahdibland/ShadowsocksAggregator/master/sub/sub_merge.txt",
-        "https://raw.githubusercontent.com/vfarid/proxy-list/main/socks5.txt"
+        "https://raw.githubusercontent.com/mahdibland/ShadowsocksAggregator/master/sub/sub_merge.txt"
     ]
     
-    all_proxies = []
+    all_found = []
     for url in sources:
         try:
-            response = requests.get(url, timeout=15)
+            response = requests.get(url, timeout=10)
             if response.status_code == 200:
-                # استخراج تمام پروکسی‌های موجود در منبع
-                found = re.findall(r'\d+\.\d+\.\d+\.\d+:\d+', response.text)
-                all_proxies.extend(found)
+                all_found.extend(re.findall(r'\d+\.\d+\.\d+\.\d+:\d+', response.text))
         except: continue
+
+    if not all_found: return None
+
+    # انتخاب ۲۰ پروکسی تصادفی برای تست پینگ (برای صرفه‌جویی در زمان)
+    sample_proxies = random.sample(all_found, min(len(all_found), 20))
     
-    if all_proxies:
-        # ترفند پینگ پایین: پروکسی‌های ابتدای لیست معمولاً تازه‌تر و خلوت‌تر هستند.
-        # به جای انتخاب کاملاً تصادفی، از بین ۱۰ مورد اول که احتمال پینگ کمتر دارند یکی را برمی‌داریم.
-        top_proxies = all_proxies[:10]
-        return random.choice(top_proxies)
+    tested_proxies = []
+    for p in sample_proxies:
+        ip, port = p.split(':')
+        ping = check_proxy_ping(ip, port)
+        if ping:
+            tested_proxies.append((p, ping))
+    
+    # مرتب‌سازی بر اساس کمترین پینگ
+    if tested_proxies:
+        tested_proxies.sort(key=lambda x: x[1])
+        return tested_proxies[0][0] # بهترین پروکسی پیدا شده
     
     return None
 
 def send_proxies():
-    # تنظیم ساعت به وقت ایران (UTC + 3:30)
     tehran_time = datetime.utcnow() + timedelta(hours=3, minutes=30)
     hour = tehran_time.hour
     
-    # انتخاب متن بر اساس بازه زمانی
     if 6 <= hour < 12:
         greeting = "☀️ صبح بخیر! روزت رو با یک پروکسی پرسرعت شروع کن"
     elif 12 <= hour < 18:
@@ -49,8 +72,7 @@ def send_proxies():
     else:
         greeting = "🦉 شب‌گرد تنها؟ نگران قطعی نباش، سی‌تو بیداره"
 
-    emojis = ["🚀", "💎", "⚡️", "🔥", "🌟", "🔋", "🛸", "🛰"]
-    random_emoji = random.choice(emojis)
+    random_emoji = random.choice(["🚀", "💎", "⚡️", "🔥", "🌟", "🔋"])
     counter = hour + 1 
 
     proxy = get_best_proxies()
@@ -61,7 +83,7 @@ def send_proxies():
         text = (
             f"{random_emoji} **{greeting}**\n\n"
             f"✅ این {counter}اُمین پروکسی رایگان امروز است!\n"
-            f"⚡️ **تلاش شده تا کم‌پینگ‌ترین سرور فعلی برای شما انتخاب شود.**\n\n"
+            f"🚀 سرور با سرعت عالی و تست شده آماده اتصال است.\n\n"
             f"❤️🤍💚\n"
             f"🆔 {chat_id}\n"
             f"««««««««««««««««««««««\n\n"
@@ -71,9 +93,9 @@ def send_proxies():
             f"👤 @vpnsito"
         )
         
-        reply_markup = {"inline_keyboard": [[{"text": f"{random_emoji} اتصال به پروکسی (Ping Low) {random_emoji}", "url": proxy_link}]]}
+        # حذف عبارت Ping Low برای ظاهر بهتر
+        reply_markup = {"inline_keyboard": [[{"text": f"{random_emoji} اتصال به پروکسی {random_emoji}", "url": proxy_link}]]}
         
-        api_url = f"https://api.telegram.org/bot{token}/sendMessage"
         payload = {
             'chat_id': chat_id,
             'text': text,
@@ -82,10 +104,10 @@ def send_proxies():
             'disable_web_page_preview': True
         }
         
-        res = requests.post(api_url, data=payload)
-        print(f"✅ ارسال موفق با اولویت پینگ پایین در ساعت {hour} ایران")
+        requests.post(f"https://api.telegram.org/bot{token}/sendMessage", data=payload)
+        print(f"✅ بهترین پروکسی با موفقیت ارسال شد.")
     else:
-        print("❌ پروکسی پیدا نشد.")
+        print("❌ هیچ پروکسی سالمی در تست پینگ پیدا نشد.")
 
 if __name__ == "__main__":
     send_proxies()
