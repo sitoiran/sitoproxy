@@ -1,7 +1,7 @@
 name: Sitoproxy Auto Bot
 on:
   schedule:
-    - cron: '0 * * * *' # اجرای خودکار سر هر ساعت (دقیقه 0)
+    - cron: '14 * * * *' # اجرای خودکار در دقیقه ۱۴ هر ساعت (پایدارتر و بدون تداخل)
   workflow_dispatch: # دکمه اجرای دستی
 
 jobs:
