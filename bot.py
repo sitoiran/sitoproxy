@@ -1,3 +1,4 @@
+
 import requests
 import os
 import re
@@ -9,22 +10,17 @@ token = os.getenv('BOT_TOKEN')
 chat_id = os.getenv('CHAT_ID')
 
 def get_best_proxies():
-    # استفاده از منابعی که پروکسی‌های MTProto تازه دارند
     sources = [
-        "https://raw.githubusercontent.com/yebekhe/TelegramVipProxy/main/proxies.txt",
-        "https://raw.githubusercontent.com/ZeiS-S/Telegram-Proxies/master/proxies.txt",
-        "https://raw.githubusercontent.com/Sahab-S/Proxy-Collector/main/proxy.txt",
-        "https://raw.githubusercontent.com/Bfanyzous/MTProto/main/mtproto.txt"
+        "https://raw.githubusercontent.com/hookzof/socks5_list/master/proxy.txt",
+        "https://api.proxyscrape.com/v2/?request=displayproxies&protocol=socks5&timeout=10000&country=all&ssl=all&anonymity=all",
+        "https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/socks5.txt"
     ]
     for url in sources:
         try:
             response = requests.get(url, timeout=15)
             if response.status_code == 200:
-                # پیدا کردن لینک‌های MTProto (شروع با tg://proxy)
-                proxies = re.findall(r'tg://proxy\?[^\s"\'<>]+', response.text)
-                if proxies: 
-                    # انتخاب یکی از ۱۰ تای آخر (چون معمولاً تازه‌تر هستند)
-                    return random.choice(proxies[-10:])
+                proxies = re.findall(r'\d+\.\d+\.\d+\.\d+:\d+', response.text)
+                if proxies: return proxies[0]
         except: continue
     return None
 
@@ -47,14 +43,19 @@ def send_proxies():
     emojis = ["🚀", "💎", "⚡️", "🔥", "🌟", "🔋", "🛸", "🛰"]
     random_emoji = random.choice(emojis)
     
+    # شمارشگر (تعداد پروکسی ارسالی از ابتدای روز ایران)
+    # چون هر ساعت یکبار اجرا می‌شود، ساعت فعلی + 1 نشان‌دهنده تعداد دفعات اجرا در امروز است
     counter = hour + 1 
 
-    proxy_link = get_best_proxies()
-    if proxy_link:
+    proxy = get_best_proxies()
+    if proxy:
+        ip, port = proxy.split(':')
+        proxy_link = f"tg://socks?server={ip}&port={port}"
+        
         text = (
             f"{random_emoji} **{greeting}**\n\n"
             f"✅ این {counter}اُمین پروکسی رایگان امروز است!\n"
-            f"🚀 سرور با سرعت عالی آماده اتصال مستقیم است.\n\n"
+            f"🚀 سرور با سرعت عالی و تست شده آماده اتصال است.\n\n"
             f"❤️🤍💚\n"
             f"🆔 {chat_id}\n"
             f"««««««««««««««««««««««\n\n"
@@ -64,7 +65,7 @@ def send_proxies():
             f"👤 @vpnsito"
         )
         
-        reply_markup = {"inline_keyboard": [[{"text": f"{random_emoji} اتصال مستقیم به پروکسی {random_emoji}", "url": proxy_link}]]}
+        reply_markup = {"inline_keyboard": [[{"text": f"{random_emoji} اتصال به پروکسی {random_emoji}", "url": proxy_link}]]}
         
         api_url = f"https://api.telegram.org/bot{token}/sendMessage"
         payload = {
@@ -76,7 +77,7 @@ def send_proxies():
         }
         
         res = requests.post(api_url, data=payload)
-        print(f"✅ ارسال موفق در ساعت {hour} ایران")
+        print(f"✅ ارسال موفق در ساعت {hour}:{tehran_time.minute} ایران")
     else:
         print("❌ پروکسی پیدا نشد.")
 
