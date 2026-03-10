@@ -9,40 +9,44 @@ token = os.getenv('BOT_TOKEN')
 chat_id = os.getenv('CHAT_ID')
 
 def get_best_mtproto():
-    """دریافت پروکسی‌های MTProto از منابع معتبر و تازه"""
+    """دریافت پروکسی‌های MTProto با جستجوی دقیق‌تر"""
     sources = [
         "https://raw.githubusercontent.com/yebekhe/TelegramVipProxy/main/proxies.txt",
         "https://raw.githubusercontent.com/ZeiS-S/Telegram-Proxies/master/proxies.txt",
         "https://raw.githubusercontent.com/Bfanyzous/MTProto/main/mtproto.txt",
-        "https://raw.githubusercontent.com/Midneight/tg-proxies/master/proxies.txt"
+        "https://raw.githubusercontent.com/Sahab-S/Proxy-Collector/main/proxy.txt"
     ]
     
     links = []
     for url in sources:
         try:
-            response = requests.get(url, timeout=15)
+            response = requests.get(url, timeout=20)
             if response.status_code == 200:
-                # استخراج لینک‌های MTProto
-                found = re.findall(r'tg://proxy\?server=[^&\s]+&port=\d+&secret=[^&\s]+', response.text)
+                # ریجکس منعطف‌تر برای پیدا کردن لینک‌های MTProto در هر شرایطی
+                found = re.findall(r'tg://proxy\?[^\s"\'<>]+', response.text)
                 links.extend(found)
         except: continue
 
     if links:
-        # به جای تست پینگ پیچیده، از بین ۵۰تای اول که تازه‌ترین‌ها هستند، یکی را تصادفی انتخاب می‌کنیم
-        # این کار شانس سالم بودن در ایران را بالاتر می‌برد
-        return random.choice(links[:50])
+        # پاکسازی لینک‌ها از کاراکترهای احتمالی اضافه در انتهای خط
+        clean_links = [l.strip() for l in links if "server=" in l and "port=" in l]
+        if clean_links:
+            # انتخاب تصادفی از بین ۵۰تای آخر (که معمولاً تازه‌ترین‌ها هستند)
+            return random.choice(clean_links[-50:])
     return None
 
 def send_proxies():
+    # تنظیم ساعت ایران
     tehran_time = datetime.utcnow() + timedelta(hours=3, minutes=30)
     hour = tehran_time.hour
     
+    # تعیین متن بر اساس ساعت
     if 6 <= hour < 12:
         greeting = "☀️ صبح بخیر! روزت رو با یک پروکسی پرسرعت شروع کن"
     elif 12 <= hour < 18:
-        greeting = "☕️ وقت استراحته! با پروکسی‌های سی‌تو بدون وقفه داخل تلگرام کانال‌گردی کن"
+        greeting = "☕️ وقت استراحته! با پروکسی‌های سی‌تو بدون وقفه در تلگرام باش"
     elif 18 <= hour < 24:
-        greeting = "🌙 شب‌نشینی با سرعت بالا! بهترین پروکسی برای تماشای ویدیو و چت در تلگرام"
+        greeting = "🌙 شب‌نشینی با سرعت بالا! بهترین پروکسی برای تماشای ویدیو"
     else:
         greeting = "🦉 شب‌گرد تنها؟ نگران قطعی نباش، سی‌تو بیداره"
 
@@ -77,11 +81,11 @@ def send_proxies():
         
         r = requests.post(f"https://api.telegram.org/bot{token}/sendMessage", data=payload)
         if r.status_code == 200:
-            print("✅ ارسال با موفقیت انجام شد.")
+            print("✅ پروکسی با موفقیت ارسال شد.")
         else:
-            print(f"❌ خطا در ارسال به تلگرام: {r.text}")
+            print(f"❌ خطا در ارسال: {r.text}")
     else:
-        print("❌ هیچ پروکسی در منابع پیدا نشد.")
+        print("❌ متاسفانه هیچ پروکسی در منابع یافت نشد.")
 
 if __name__ == "__main__":
     send_proxies()
