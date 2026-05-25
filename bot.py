@@ -145,4 +145,35 @@ function call_api($method, $post) {
     curl_setopt($ch, CURLOPT_POSTFIELDS, $post); curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     $r = curl_exec($ch); curl_close($ch); return $r;
 }
+?>        $name = str_replace("-", " ", $ex[1]); 
+        $price = str_replace("-", " ", $ex[2]);
+        $pay_text = "✅ **طرح انتخاب شده:** $name\n💰 **مبلغ قابل پرداخت:** $price\n\n" .
+                    "➖➖➖➖➖➖➖➖➖➖\n💳 شماره کارت جهت واریز:\n`6219861814211347`\n👤 **بنام:** مهین سراقی\n" .
+                    "➖➖➖➖➖➖➖➖➖➖\n\n💡 *برای کپی آسان، روی شماره کارت بالا بزنید.*\n\n👇 **لطفاً پس از واریز، تصویر فیش را اینجا ارسال کنید:**";
+        
+        // تشخیص بازگشت دکمه پرداخت به منوی قیمتی مربوطه
+        $back_callback = (strpos($data, "Unlimited") !== false) ? "show_unlimit_prices" : "show_hajmi_prices";
+        
+        edit_message($cid, $mid, $pay_text, json_encode(['inline_keyboard' => [[['text' => "🔙 بازگشت", 'callback_data' => $back_callback]]]]));
+    }
+    elseif (strpos($data, "conf_") !== false) {
+        $u_id = str_replace("conf_", "", $data);
+        send_message($admin_id, "لینک را روی این پیام ریپلای کنید:\nشناسه: $u_id");
+    }
+    elseif (strpos($data, "rej_") !== false) {
+        send_message(str_replace("rej_", "", $data), "❌ فیش تایید نشد.");
+    }
+    
+    call_api("answerCallbackQuery", ['callback_query_id' => $cb->id]);
+}
+
+function send_message($c, $t, $m = null) { return call_api("sendMessage", ['chat_id' => $c, 'text' => $t, 'parse_mode' => 'Markdown', 'reply_markup' => $m]); }
+function send_photo($c, $p, $cap, $m = null) { return call_api("sendPhoto", ['chat_id' => $c, 'photo' => $p, 'caption' => $cap, 'reply_markup' => $m]); }
+function edit_message($c, $mid, $t, $m = null) { return call_api("editMessageText", ['chat_id' => $c, 'message_id' => $mid, 'text' => $t, 'parse_mode' => 'Markdown', 'reply_markup' => $m]); }
+function call_api($method, $post) {
+    global $token; $u = "https://api.telegram.org/bot$token/$method";
+    $ch = curl_init(); curl_setopt($ch, CURLOPT_URL, $u); curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $post); curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    $r = curl_exec($ch); curl_close($ch); return $r;
+}
 ?>
