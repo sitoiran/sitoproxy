@@ -7,7 +7,7 @@ $update = json_decode($input);
 if (!$update) exit;
 
 $main_menu_inline = json_encode(['inline_keyboard' => [
-    [['text' => '🟢 خرید اشتراک 🟢', 'callback_data' => 'pre_buy_types']],
+    [['text' => '🟢 خرید اشتراک 🟢', 'callback_data' => 'main_buy']],
     [['text' => '👤 حساب کاربری', 'callback_data' => 'main_acc'], ['text' => '📞 پشتیبانی', 'callback_data' => 'main_sup']]
 ]]);
 
@@ -19,25 +19,46 @@ if (isset($update->message)) {
     } 
     elseif (isset($msg->photo)) {
         $ph_id = end($msg->photo)->file_id;
-        send_message($chat_id, "⏳ فیش دریافت شد. منتظر تایید مدیریت باشید.");
+        
+        $back_btn = json_encode(['inline_keyboard' => [
+            [['text' => "🔙 بازگشت به منوی اصلی", 'callback_data' => "back_to_start"]]
+        ]]);
+        
+        send_message($chat_id, "⏳ فیش دریافت شد. منتظر تایید مدیریت باشید.", $back_btn);
+        
+        $plan_file = "plan_{$chat_id}.txt";
+        $current_plan = file_exists($plan_file) ? file_get_contents($plan_file) : "نامشخص";
         
         $adm_btns = json_encode(['inline_keyboard' => [[
             ['text' => "✅ تایید فیش", 'callback_data' => "conf_{$chat_id}"], 
             ['text' => "❌ رد فیش", 'callback_data' => "rej_$chat_id"]
         ]]]);
-        send_photo($admin_id, $ph_id, "🔔 فیش جدید!\n🆔 آیدی: $chat_id", $adm_btns);
+        send_photo($admin_id, $ph_id, "🔔 فیش جدید!\n🆔 آیدی: $chat_id\n💎 طرح درخواستی: $current_plan", $adm_btns);
     }
     
     if (isset($text) && $chat_id == $admin_id && isset($msg->reply_to_message)) {
         $reply_text = $msg->reply_to_message->text;
         if (strpos($reply_text, "شناسه:") !== false) {
-            $u_id = trim(explode("شناسه:", $reply_text)[1]);
+            $u_id = trim(explode("\n", explode("شناسه:", $reply_text)[1])[0]);
+            
+            $plan_file = "plan_{$u_id}.txt";
+            $current_plan = file_exists($plan_file) ? file_get_contents($plan_file) : "اشتراک معمولی";
+            
+            $today_shamsi = get_current_shamsi_date();
+            
+            $user_file = "user_{$u_id}.txt";
+            $save_data = $current_plan . "|" . $text . "|" . $today_shamsi . "\n";
+            file_put_contents($user_file, $save_data, FILE_APPEND);
+            
             $msg_to_user = "✅ واریزی شما تایید شد!\n\n🚀 لینک اختصاصی شما:\n\n`$text` \n\n👆 روی لینک بزنید تا کپی شود.";
+            
             $after_link_btns = json_encode(['inline_keyboard' => [
-                [['text' => "🛠 برنامه لازم برای کانفیگ", 'callback_data' => "help_usage"], ['text' => "🛒 خرید اشتراک جدید", 'callback_data' => 'pre_buy_types']]
+                [['text' => "🛠 برنامه لازم برای کانفیگ", 'callback_data' => "help_usage"], ['text' => "🛒 خرید اشتراک جدید", 'callback_data' => 'main_buy']],
+                [['text' => "🔙 بازگشت به منوی اصلی", 'callback_data' => "back_to_start"]]
             ]]);
+            
             send_message($u_id, $msg_to_user, $after_link_btns);
-            send_message($admin_id, "✅ لینک با موفقیت برای کاربر $u_id ارسال شد.");
+            send_message($admin_id, "✅ لینک با موفقیت برای کاربر $u_id ارسال شد و در تاریخچه حسابش ذخیره گردید.");
         }
     }
 }
@@ -45,55 +66,78 @@ if (isset($update->message)) {
 if (isset($update->callback_query)) {
     $cb = $update->callback_query; $data = $cb->data; $cid = $cb->message->chat->id; $mid = $cb->message->message_id;
 
-    // انتخاب نوع اشتراک (حجمی یا نامحدود)
-    if ($data == "pre_buy_types") {
+    if ($data == "main_buy") {
         $inline = json_encode(['inline_keyboard' => [
-            [['text' => "📊 اشتراک حجمی", 'callback_data' => "type_hajmi"], ['text' => "♾ اشتراک نامحدود", 'callback_data' => "type_unlimit"]],
+            [['text' => "۳۰ مگ ◂ تست ۱۰ هزار تومان", 'callback_data' => "buy_test30mb_10-هزار-تومان"]],
+            [['text' => "۱ گیگ ◂ ۲۰۰ هزار تومان دو کاربر", 'callback_data' => "buy_1gb2user_۲۰۰-هزار-تومان"]],
+            [['text' => "۵ گیگ ◂ ۱ میلیون تومان دو کاربر", 'callback_data' => "buy_5gb2user_۱-میلیون-تومان"]],
+            [['text' => "۱۰ گیگ ◂ ۲ میلیون تومان دو کاربر", 'callback_data' => "buy_10gb2user_۲-میلیون-تومان"]],
+            [['text' => "۱۵ گیگ ◂ ۳ میلیون تومان دو کاربر", 'callback_data' => "buy_15gb2user_۳-میلیون-تومان"]],
+            [['text' => "۲۰ گیگ ◂ ۴ میلیون تومان دو کاربر", 'callback_data' => "buy_20gb2user_۴-میلیون-تومان"]],
             [['text' => "🔙 بازگشت به منوی اصلی", 'callback_data' => "back_to_start"]]
-        ]]);
-        edit_message($cid, $mid, "🥇 لطفاً نوع اشتراک مورد نظر خود را انتخاب کنید:", $inline);
-    }
-    // بعد از انتخاب حجمی -> دکمه یک‌ماهه بیاید
-    elseif ($data == "type_hajmi") {
-        $inline = json_encode(['inline_keyboard' => [
-            [['text' => "📅 یک‌ماهه", 'callback_data' => "show_hajmi_prices"]],
-            [['text' => "🔙 بازگشت", 'callback_data' => "pre_buy_types"]]
-        ]]);
-        edit_message($cid, $mid, "⏱ مدت زمان اشتراک حجمی را انتخاب کنید:", $inline);
-    }
-    // بعد از انتخاب نامحدود -> دکمه یک‌ماهه بیاید
-    elseif ($data == "type_unlimit") {
-        $inline = json_encode(['inline_keyboard' => [
-            [['text' => "📅 یک‌ماهه", 'callback_data' => "show_unlimit_prices"]],
-            [['text' => "🔙 بازگشت", 'callback_data' => "pre_buy_types"]]
-        ]]);
-        edit_message($cid, $mid, "⏱ مدت زمان اشتراک نامحدود را انتخاب کنید:", $inline);
-    }
-    // نمایش لیست قیمت‌های حجمی یک‌ماهه
-    elseif ($data == "show_hajmi_prices") {
-        $inline = json_encode(['inline_keyboard' => [
-            [['text' => "۳۰ مگ ◂ تست ۲۰ هزار تومان", 'callback_data' => "buy_30MB-Test_۲۰-هزار-تومان"]],
-            [['text' => "۱ گیگ ◂ ۲۰۰ هزار تومان دو کاربر", 'callback_data' => "buy_1GB-2User_۲۰۰-هزار-تومان"]],
-            [['text' => "۵ گیگ ◂ ۱ میلیون تومان دو کاربر", 'callback_data' => "buy_5GB-2User_۱-میلیون-تومان"]],
-            [['text' => "۱۰ گیگ ◂ ۲ میلیون تومان دو کاربر", 'callback_data' => "buy_10GB-2User_۲-میلیون-تومان"]],
-            [['text' => "۱۵ گیگ ◂ ۳ میلیون تومان دو کاربر", 'callback_data' => "buy_15GB-2User_۳-میلیون-تومان"]],
-            [['text' => "۲۰ گیگ ◂ ۴ میلیون تومان دو کاربر", 'callback_data' => "buy_20GB-2User_۴-میلیون-تومان"]],
-            [['text' => "🔙 بازگشت", 'callback_data' => "type_hajmi"]]
         ]]);
         edit_message($cid, $mid, "🥇 لیست قیمت‌های اشتراک حجمی (یک‌ماهه):", $inline);
     }
-    // نمایش لیست قیمت‌های نامحدود یک‌ماهه
-    elseif ($data == "show_unlimit_prices") {
-        $inline = json_encode(['inline_keyboard' => [
-            [['text' => "نامحدود یک کاربر ◂ ۴ میلیون تومان", 'callback_data' => "buy_Unlimited-1User_۴-میلیون-تومان"]],
-            [['text' => "نامحدود دو کاربر ◂ ۲ میلیون تومان", 'callback_data' => "buy_Unlimited-2User_۲-میلیون-تومان"]],
-            [['text' => "🔙 بازگشت", 'callback_data' => "type_unlimit"]]
-        ]]);
-        edit_message($cid, $mid, "🥇 لیست قیمت‌های اشتراک نامحدود (یک‌ماهه):", $inline);
-    }
     elseif ($data == "main_acc") {
         $username = isset($cb->from->username) ? "@" . $cb->from->username : "ثبت نشده";
-        $acc_text = "👤 حساب کاربری شما:\n\n💎 نام کاربری: $username\n🆔 آیدی عددی: `$cid` \n📍 وضعیت: آماده خرید";
+        $user_file = "user_{$cid}.txt";
+        $bought_links = "";
+        $has_history = false;
+        
+        if (file_exists($user_file) && filesize($user_file) > 0) {
+            $links_array = file($user_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+            $counter = 1;
+            foreach ($links_array as $line) {
+                if (strpos($line, "|") !== false) {
+                    $parts = explode("|", $line);
+                    $plan_name = $parts[0]; 
+                    $link_val = $parts[1];  
+                    $date_val = isset($parts[2]) ? " 📅 تاریخ: " . $parts[2] : "";
+                    
+                    $bought_links .= "🔑 اشتراک شماره $counter : $plan_name$date_val\n`$link_val` \n\n";
+                } else {
+                    $bought_links .= "🔑 اشتراک شماره $counter :\n`$line` \n\n";
+                }
+                $counter++;
+            }
+            $has_history = true;
+        } else {
+            $bought_links = "❌ شما هنوز هیچ اشتراکی خریداری نکرده‌اید.";
+        }
+        
+        $acc_text = "👤 حساب کاربری شما:\n\n💎 نام کاربری: $username\n🆔 آیدی عددی: `$cid` \n📍 وضعیت: آماده خرید\n\n" .
+                    "➖➖➖➖➖➖➖➖➖➖\n" .
+                    "📦 لیست اشتراک‌های خریداری شده شما:\n\n" . $bought_links . 
+                    "💡 *روی هر لینک بزنید به صورت خودکار کپی می‌شود.*";
+                    
+        $acc_buttons = [];
+        if ($has_history) {
+            $acc_buttons[] = [['text' => "🗑 حذف اشتراک‌ها", 'callback_data' => "confirm_clear"], ['text' => "🔙 بازگشت", 'callback_data' => "back_to_start"]];
+        } else {
+            $acc_buttons[] = [['text' => "🔙 بازگشت", 'callback_data' => "back_to_start"]];
+        }
+                    
+        edit_message($cid, $mid, $acc_text, json_encode(['inline_keyboard' => $acc_buttons]));
+    }
+    elseif ($data == "confirm_clear") {
+        // نمایش پیام تایید دو مرحله‌ای با علامت خطر و دکمه بله و خیر
+        $warn_text = "⚠️ **هشدار مهم!**\n\nبا حذف اشتراک‌ها تمام لینک کانفیگ‌های شما حذف می‌شود و دیگر قابل بازگشت نیست.\n\nآیا مطمئن هستید؟";
+        $warn_btns = json_encode(['inline_keyboard' => [
+            [['text' => "✅ بله، مطمئنم", 'callback_data' => "clear_history_final"], ['text' => "❌ خیر، بازگشت", 'callback_data' => "main_acc"]]
+        ]]);
+        edit_message($cid, $mid, $warn_text, $warn_btns);
+    }
+    elseif ($data == "clear_history_final") {
+        $user_file = "user_{$cid}.txt";
+        if (file_exists($user_file)) {
+            unlink($user_file);
+        }
+        call_api("answerCallbackQuery", ['callback_query_id' => $cb->id, 'text' => "🗑 تاریخچه خرید شما با موفقیت پاک شد!", 'show_alert' => true]);
+        
+        $username = isset($cb->from->username) ? "@" . $cb->from->username : "ثبت نشده";
+        $acc_text = "👤 حساب کاربری شما:\n\n💎 نام کاربری: $username\n🆔 آیدی عددی: `$cid` \n📍 وضعیت: آماده خرید\n\n" .
+                    "➖➖➖➖➖➖➖➖➖➖\n" .
+                    "📦 لیست اشتراک‌های خریداری شده شما:\n\n❌ شما هنوز هیچ اشتراکی خریداری نکرده‌اید.";
         edit_message($cid, $mid, $acc_text, json_encode(['inline_keyboard' => [[['text' => "🔙 بازگشت", 'callback_data' => "back_to_start"]]]]));
     }
     elseif ($data == "main_sup") {
@@ -114,16 +158,24 @@ if (isset($update->callback_query)) {
     }
     elseif (strpos($data, "buy_") !== false) {
         $ex = explode("_", $data); 
-        $name = str_replace("-", " ", $ex[1]); 
+        $plan_code = $ex[1]; 
         $price = str_replace("-", " ", $ex[2]);
+        
+        $name = "اشتراک معمولی";
+        if ($plan_code == "test30mb") $name = "۳۰ مگ تست";
+        elseif ($plan_code == "1gb2user") $name = "۱ گیگ یکماه دوکاربر";
+        elseif ($plan_code == "5gb2user") $name = "۵ گیگ یکماه دوکاربر";
+        elseif ($plan_code == "10gb2user") $name = "۱۰ گیگ یکماه دوکاربر";
+        elseif ($plan_code == "15gb2user") $name = "۱۵ گیگ یکماه دوکاربر";
+        elseif ($plan_code == "20gb2user") $name = "۲۰ گیگ یکماه دوکاربر";
+        
+        file_put_contents("plan_{$cid}.txt", $name);
+        
         $pay_text = "✅ **طرح انتخاب شده:** $name\n💰 **مبلغ قابل پرداخت:** $price\n\n" .
                     "➖➖➖➖➖➖➖➖➖➖\n💳 شماره کارت جهت واریز:\n`6219861814211347`\n👤 **بنام:** مهین سراقی\n" .
                     "➖➖➖➖➖➖➖➖➖➖\n\n💡 *برای کپی آسان، روی شماره کارت بالا بزنید.*\n\n👇 **لطفاً پس از واریز، تصویر فیش را اینجا ارسال کنید:**";
         
-        // تشخیص بازگشت دکمه پرداخت به منوی قیمتی مربوطه
-        $back_callback = (strpos($data, "Unlimited") !== false) ? "show_unlimit_prices" : "show_hajmi_prices";
-        
-        edit_message($cid, $mid, $pay_text, json_encode(['inline_keyboard' => [[['text' => "🔙 بازگشت", 'callback_data' => $back_callback]]]]));
+        edit_message($cid, $mid, $pay_text, json_encode(['inline_keyboard' => [[['text' => "🔙 بازگشت", 'callback_data' => "main_buy"]]]]));
     }
     elseif (strpos($data, "conf_") !== false) {
         $u_id = str_replace("conf_", "", $data);
@@ -144,5 +196,42 @@ function call_api($method, $post) {
     $ch = curl_init(); curl_setopt($ch, CURLOPT_URL, $u); curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, $post); curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     $r = curl_exec($ch); curl_close($ch); return $r;
+}
+
+function get_current_shamsi_date() {
+    $timestamp = time();
+    $g_y = intval(date('Y', $timestamp));
+    $g_m = intval(date('m', $timestamp));
+    $g_d = intval(date('d', $timestamp));
+
+    $g_days_in_month = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    if (($g_y % 4 == 0 && $g_y % 100 != 0) || ($g_y % 400 == 0)) {
+        $g_days_in_month[1] = 29;
+    }
+
+    $g_day_no = 0;
+    for ($i = 0; $i < $g_m - 1; $i++) {
+        $g_day_no += $g_days_in_month[$i];
+    }
+    $g_day_no += $g_d - 1;
+
+    $jy = $g_y - 621;
+    $j_day_no = $g_day_no - 79;
+
+    if ($j_day_no < 0) {
+        $jy--;
+        $j_day_no += (($jy % 4 == 0 && $jy % 100 != 0) || ($jy % 400 == 0)) ? 366 : 365;
+    }
+
+    if ($j_day_no < 186) {
+        $jm = intval($j_day_no / 31) + 1;
+        $jd = ($j_day_no % 31) + 1;
+    } else {
+        $j_day_no -= 186;
+        $jm = intval($j_day_no / 30) + 7;
+        $jd = ($j_day_no % 30) + 1;
+    }
+
+    return sprintf("%04d/%02d/%02d", $jy, $jm, $jd);
 }
 ?>
