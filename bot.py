@@ -6,7 +6,6 @@ import re
 token = os.getenv('BOT_TOKEN')
 chat_id = os.getenv('CHAT_ID')
 
-# منابع فوق‌العاده فعال و تست شده که همیشه پروکسی دارند
 sources = [
     "https://raw.githubusercontent.com/yebekhe/TelegramV2rayCollector/main/sub/MTProto",
     "https://raw.githubusercontent.com/altanyvpn/telegram-proxy/main/list.txt",
@@ -20,12 +19,10 @@ def fetch_valid_proxy():
             response = requests.get(url, timeout=15)
             if response.status_code == 200:
                 text = response.text
-                # یک جستجوی ساده و منعطف برای پیدا کردن هر نوع لینک پروکسی تلگرام
                 proxies = re.findall(r'(t\.me/proxy\?server=[^\s"\'><]+|tg://socks\?[^\s"\'><]+|tg://proxy\?[^\s"\'><]+)', text)
                 
                 if proxies:
                     found_proxy = proxies[0].strip()
-                    # استانداردسازی لینک برای تلگرام
                     if found_proxy.startswith("t.me"):
                         found_proxy = "https://" + found_proxy
                     elif found_proxy.startswith("tg://socks?"):
@@ -45,14 +42,13 @@ def send_proxies():
     proxy_link = fetch_valid_proxy()
     
     if not proxy_link:
-        print("❌ دیتایی از منابع دریافت نشد یا فرمت لینک‌ها تغییر کرده است.")
+        print("❌ دیتایی از منابع دریافت نشد.")
         return
 
     try:
-        # متن لینک‌دار اختصاصی شما
-        link_text = f"[⚡️ اتصال به پروکسی رایگان سی تو ⚡️]({proxy_link})"
+        # تغییر ساختار لینک‌ها به HTML برای امنیت بیشتر در ارسال
+        link_text = f'<a href="{proxy_link}">⚡️ اتصال به پروکسی رایگان سی تو ⚡️</a>'
         
-        # دکمه شیشه‌ای زیر پیام
         reply_markup = {
             "inline_keyboard": [
                 [
@@ -61,9 +57,9 @@ def send_proxies():
             ]
         }
         
-        # چیدمان متن نهایی شما
+        # چیدمان متن با تگ‌های HTML (به جای استار از b استفاده شده)
         text = (
-            f"🌍 **پروکسی بین‌المللی سی‌تو (سرور خارج)**\n\n"
+            f"🌍 <b>پروکسی بین‌المللی سی‌تو (سرور خارج)</b>\n\n"
             f"{link_text}\n"
             f"{link_text}\n"
             f"{link_text}\n\n"
@@ -80,15 +76,16 @@ def send_proxies():
         payload = {
             'chat_id': chat_id,
             'text': text,
-            'parse_mode': 'Markdown',
+            'parse_mode': 'HTML', # تغییر از Markdown به HTML
             'reply_markup': json.dumps(reply_markup)
         }
         
         api_url = f"https://api.telegram.org/bot{token}/sendMessage"
         res = requests.post(api_url, data=payload)
+        
         print(f"Telegram API Status: {res.status_code}")
         if res.status_code != 200:
-            print(f"Telegram Response Error: {res.text}")
+            print(f"❌ Telegram Response Error: {res.text}")
             
     except Exception as e:
         print(f"Error in sending message: {e}")
