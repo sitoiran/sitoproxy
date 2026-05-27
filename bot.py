@@ -1,28 +1,34 @@
 import requests
 import os
 import json
+import re
 
 token = os.getenv('BOT_TOKEN')
 chat_id = os.getenv('CHAT_ID')
 
 def send_proxies():
     print("Process Started...")
-    url = "https://proxylist.geonode.com/api/proxy-list?limit=10&page=1&sort_by=lastChecked&sort_type=desc&protocols=socks5"
+    
+    # یک منبع کاملاً زنده و بدون فیلتر از پروکسی‌های فعال MTProto اختصاصی ایران
+    url = "https://raw.githubusercontent.com/Bardiafa/Telegram-Proxy-Collector/main/MTProto.txt"
     
     try:
         response = requests.get(url, timeout=20)
         if response.status_code == 200:
-            data = response.json()
-            proxies = data.get('data', [])
+            text = response.text
+            
+            # استخراج لینک پروکسی‌های فعال تلگرام
+            proxies = re.findall(r'(tg://proxy\?[^\s"\'><]+|https://t\.me/proxy\?[^\s"\'><]+)', text)
             
             if proxies:
-                p = proxies[0]
-                ip = p['ip']
-                port = p['port']
+                # انتخاب اولین پروکسی زنده و تازه از لیست
+                proxy_link = proxies[0].strip()
                 
-                proxy_link = f"tg://socks?server={ip}&port={port}"
+                # استانداردسازی لینک پروکسی برای دکمه‌ها
+                if proxy_link.startswith("https://t.me/proxy?"):
+                    proxy_link = proxy_link.replace("https://t.me/proxy?", "tg://proxy?")
                 
-                # متن لینک‌دار اختصاصی شما (۳ بار تکرار به جای کد خام)
+                # متن لینک‌دار اختصاصی شما (۳ بار تکرار)
                 link_text = f"[⚡️ اتصال به پروکسی رایگان سی تو ⚡️]({proxy_link})"
                 
                 # ساخت دکمه شیشه‌ای زیر پیام
@@ -34,7 +40,7 @@ def send_proxies():
                     ]
                 }
                 
-                # چیدمان متن جدید همراه با تغییرات بخش ربات فروش
+                # چیدمان متن پیام کانال شما
                 text = (
                     f"🌍 **پروکسی بین‌المللی سی‌تو (سرور خارج)**\n\n"
                     f"{link_text}\n"
@@ -50,7 +56,7 @@ def send_proxies():
                     f"🤖 @vpnsitobot"
                 )
                 
-                # ارسال داده‌ها به همراه دکمه شیشه‌ای
+                # ارسال داده‌ها به تلگرام
                 payload = {
                     'chat_id': chat_id,
                     'text': text,
@@ -61,8 +67,12 @@ def send_proxies():
                 api_url = f"https://api.telegram.org/bot{token}/sendMessage"
                 res = requests.post(api_url, data=payload)
                 print(f"Telegram API Status: {res.status_code}")
+                print(f"Response: {res.text}")
             else:
-                print("No proxies found.")
+                print("No active MTProto proxies found in the source list.")
+        else:
+            print(f"Failed to fetch source, status code: {response.status_code}")
+            
     except Exception as e:
         print(f"Error: {e}")
 
